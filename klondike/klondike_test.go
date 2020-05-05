@@ -41,3 +41,17 @@ func TestKlondike_NewGame(t *testing.T) {
 		}
 	}
 }
+
+func TestKlondike_NewGameWithSeed(t *testing.T) {
+	g1 := NewGameWithSeed(69, 1)
+	g2 := NewGameWithSeed(69, 1)
+	g3 := NewGameWithSeed(1337, 1)
+
+	if g1.State().Hash() != g2.State().Hash() {
+		t.Fatal("two games from the same seed should be equal")
+	}
+
+	if g1.State().Hash() == g3.State().Hash() {
+		t.Fatal("two games from different seeds should not be equal")
+	}
+}

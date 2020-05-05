@@ -1,6 +1,7 @@
 package klondike
 
 import (
+	"crypto/sha256"
 	"errors"
 	"math/rand"
 )
@@ -23,6 +24,25 @@ type Card struct {
 	Type    CardType
 	Number  int
 	Flipped bool
+}
+
+type cardPile []Card
+
+func (c Card) bytes() []byte {
+	var flipped byte
+	if c.Flipped {
+		flipped = 1
+	}
+
+	return []byte{byte(c.Type), byte(c.Number), flipped}
+}
+
+func (p cardPile) bytes() []byte {
+	b := []byte{}
+	for _, c := range p {
+		b = append(b, c.bytes()...)
+	}
+	return b
 }
 
 func (c Card) stackablePile(cc Card) bool {
@@ -52,6 +72,10 @@ func (c Card) stackableFoundation(cc Card) bool {
 type Pile struct {
 	cards        []Card
 	flippedCount int
+}
+
+func (p Pile) bytes() []byte {
+	return cardPile(p.cards).bytes()
 }
 
 func (p Pile) Len() int {
@@ -124,6 +148,10 @@ type Foundation struct {
 	cards []Card
 }
 
+func (f Foundation) bytes() []byte {
+	return cardPile(f.cards).bytes()
+}
+
 func (f Foundation) Len() int {
 	return len(f.cards)
 }
@@ -168,6 +196,11 @@ type Stock struct {
 	passesCount  int
 	currentIndex int
 	cards        []Card
+}
+
+func (s Stock) bytes() []byte {
+	b := cardPile(s.cards).bytes()
+	return append([]byte{byte(s.passesCount), byte(s.currentIndex)}, b...)
 }
 
 func (s Stock) Len() int {
@@ -220,6 +253,18 @@ type GameState struct {
 	Foundations [4]Foundation
 }
 
+func (s GameState) Hash() [32]byte {
+	b := s.Stock.bytes()
+	for _, p := range s.Piles {
+		b = append(b, p.bytes()...)
+	}
+	for _, f := range s.Foundations {
+		b = append(b, f.bytes()...)
+	}
+
+	return sha256.Sum256(b)
+}
+
 type Game struct {
 	draws int
 	state GameState
@@ -254,6 +299,10 @@ type move struct {
 	From      TableauLocation
 	CardCount int
 	To        TableauLocation
+}
+
+func NewGameWithSeed(seed int64, draws int) Game {
+	return NewGame(rand.NewSource(seed), draws)
 }
 
 func NewGame(randSrc rand.Source, draws int) Game {
