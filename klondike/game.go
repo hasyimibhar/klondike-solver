@@ -29,35 +29,29 @@ type Game struct {
 	state GameState
 }
 
-type moveType int
+type Location int
 
 const (
-	moveTypeDrawFromStock moveType = iota
-	moveTypeMoveCard
+	LocationStock Location = iota
+	LocationPile1
+	LocationPile2
+	LocationPile3
+	LocationPile4
+	LocationPile5
+	LocationPile6
+	LocationPile7
+	LocationFoundationHeart
+	LocationFoundationSpade
+	LocationFoundationDiamond
+	LocationFoundationClub
 )
 
-type TableauLocation int
+func GetPile(i int) Location {
+	return LocationPile1 + Location(i)
+}
 
-const (
-	TableauLocationStock TableauLocation = iota
-	TableauLocationPile1
-	TableauLocationPile2
-	TableauLocationPile3
-	TableauLocationPile4
-	TableauLocationPile5
-	TableauLocationPile6
-	TableauLocationPile7
-	TableauLocationFoundationHeart
-	TableauLocationFoundationSpade
-	TableauLocationFoundationDiamond
-	TableauLocationFoundationClub
-)
-
-type move struct {
-	Type      moveType
-	From      TableauLocation
-	CardCount int
-	To        TableauLocation
+func GetFoundation(cardType CardType) Location {
+	return LocationFoundationHeart + Location(int(cardType)-1)
 }
 
 func NewGameWithSeed(seed int64, draws int) Game {
@@ -126,14 +120,14 @@ func (g Game) move(m move) (Game, error) {
 	var cards []Card
 
 	switch m.From {
-	case TableauLocationStock:
+	case LocationStock:
 		g.state.Stock, cards, err = g.state.Stock.pop(m.CardCount)
 
-	case TableauLocationFoundationClub, TableauLocationFoundationSpade, TableauLocationFoundationHeart, TableauLocationFoundationDiamond:
+	case LocationFoundationClub, LocationFoundationSpade, LocationFoundationHeart, LocationFoundationDiamond:
 		f := g.state.Foundations[m.From-8]
 		g.state.Foundations[m.From-8], cards, err = f.pop(m.CardCount)
 
-	case TableauLocationPile1, TableauLocationPile2, TableauLocationPile3, TableauLocationPile4, TableauLocationPile5, TableauLocationPile6, TableauLocationPile7:
+	case LocationPile1, LocationPile2, LocationPile3, LocationPile4, LocationPile5, LocationPile6, LocationPile7:
 		p := g.state.Piles[m.From-1]
 		g.state.Piles[m.From-1], cards, err = p.pop(m.CardCount)
 	}
@@ -146,14 +140,14 @@ func (g Game) move(m move) (Game, error) {
 	copy(popped, cards)
 
 	switch m.To {
-	case TableauLocationStock:
+	case LocationStock:
 		g.state.Stock, err = g.state.Stock.place(popped)
 
-	case TableauLocationFoundationClub, TableauLocationFoundationSpade, TableauLocationFoundationHeart, TableauLocationFoundationDiamond:
+	case LocationFoundationClub, LocationFoundationSpade, LocationFoundationHeart, LocationFoundationDiamond:
 		f := g.state.Foundations[m.To-8]
 		g.state.Foundations[m.To-8], err = f.place(popped)
 
-	case TableauLocationPile1, TableauLocationPile2, TableauLocationPile3, TableauLocationPile4, TableauLocationPile5, TableauLocationPile6, TableauLocationPile7:
+	case LocationPile1, LocationPile2, LocationPile3, LocationPile4, LocationPile5, LocationPile6, LocationPile7:
 		p := g.state.Piles[m.To-1]
 		g.state.Piles[m.To-1], err = p.place(popped)
 	}
@@ -169,17 +163,8 @@ func (g Game) DrawFromStock() (Game, error) {
 	return g.move(move{Type: moveTypeDrawFromStock})
 }
 
-func (g Game) MoveCard(from, to TableauLocation, count int) (Game, error) {
-	if from == to {
-		return g, nil
-	}
-
-	return g.move(move{
-		Type:      moveTypeMoveCard,
-		From:      from,
-		To:        to,
-		CardCount: count,
-	})
+func (g Game) MoveCard() moveCardBuilder {
+	return moveCardBuilder{game: g}
 }
 
 // Solved returns true if the game is solved.
