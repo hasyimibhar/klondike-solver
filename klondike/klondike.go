@@ -47,7 +47,7 @@ func (p cardPile) bytes() []byte {
 
 func (c Card) stackablePile(cc Card) bool {
 	// Must be different color
-	if c.Type%2 != cc.Type%2 {
+	if c.Type%2 == cc.Type%2 {
 		return false
 	}
 	// Top card number must be bottom card number-1
@@ -112,7 +112,7 @@ func (p Pile) pop(n int) (Pile, []Card, error) {
 	}
 
 	p.cards = p.cards[n:]
-	if !p.cards[0].Flipped {
+	if len(p.cards) > 0 && !p.cards[0].Flipped {
 		p.cards[0].Flipped = true
 	}
 
@@ -145,7 +145,8 @@ func (p Pile) place(cards []Card) (Pile, error) {
 }
 
 type Foundation struct {
-	cards []Card
+	cardType CardType
+	cards    []Card
 }
 
 func (f Foundation) bytes() []byte {
@@ -154,6 +155,10 @@ func (f Foundation) bytes() []byte {
 
 func (f Foundation) Len() int {
 	return len(f.cards)
+}
+
+func (f Foundation) CardType() CardType {
+	return f.cardType
 }
 
 func (f Foundation) Card() Card {
@@ -168,7 +173,7 @@ func (f Foundation) pop(n int) (Foundation, []Card, error) {
 	if len(f.cards) == 0 {
 		panic(errors.New("cannot pop empty foundation"))
 	}
-	if n != 0 {
+	if n != 1 {
 		panic(errors.New("can only pop 1 card from foundation"))
 	}
 
@@ -186,6 +191,8 @@ func (f Foundation) place(cards []Card) (Foundation, error) {
 	c := cards[0]
 	if len(f.cards) > 0 && !c.stackableFoundation(f.cards[0]) {
 		return Foundation{}, ErrInvalidMove
+	} else if len(f.cards) == 0 && cards[0].Type != f.cardType {
+		return Foundation{}, ErrInvalidMove
 	}
 
 	f.cards = append([]Card{c}, f.cards...)
@@ -193,54 +200,78 @@ func (f Foundation) place(cards []Card) (Foundation, error) {
 }
 
 type Stock struct {
-	passesCount  int
-	currentIndex int
-	cards        []Card
+	passesCount int
+	cards       []Card
+	drawn       []Card
 }
 
 func (s Stock) bytes() []byte {
 	b := cardPile(s.cards).bytes()
-	return append([]byte{byte(s.passesCount), byte(s.currentIndex)}, b...)
+	b = append(b, cardPile(s.drawn).bytes()...)
+	return append([]byte{byte(s.passesCount)}, b...)
+}
+
+func (s Stock) Drawn() []Card {
+	return s.drawn
 }
 
 func (s Stock) Len() int {
 	return len(s.cards)
 }
 
-func (s Stock) draw(n int) (Stock, error) {
-	if s.currentIndex == -1 {
-		s.currentIndex = 0
-		return s, nil
+func (s Stock) Card(idx int) Card {
+	if idx < 0 || idx >= len(s.drawn) {
+		panic(errors.New("invalid index"))
 	}
 
-	if s.currentIndex+n == len(s.cards) {
-		s.currentIndex = -1
+	return s.drawn[idx]
+}
+
+func (s Stock) draw(n int) (Stock, error) {
+	// Recycle
+	if len(s.cards) == 0 {
+		// Put the drawn cards back to the stock pile and reverse the order
+		s.cards = s.drawn
+		for i := len(s.cards)/2 - 1; i >= 0; i-- {
+			j := len(s.cards) - 1 - i
+			s.cards[i], s.cards[j] = s.cards[j], s.cards[i]
+		}
+
+		s.drawn = []Card{}
 		s.passesCount++
 		return s, nil
 	}
 
-	if s.currentIndex+n > len(s.cards) {
-		n = len(s.cards) - s.currentIndex - 1
+	actualN := n
+	if actualN > len(s.cards) {
+		actualN = len(s.cards)
 	}
 
-	s.currentIndex += n
+	drawn := make([]Card, actualN)
+	copy(drawn, s.cards[:actualN])
+
+	// Flip drawn cards
+	for i := range drawn {
+		drawn[i].Flipped = true
+	}
+
+	s.drawn = append(drawn, s.drawn...)
+	s.cards = s.cards[n:]
+
 	return s, nil
 }
 
 func (s Stock) pop(n int) (Stock, []Card, error) {
-	if len(s.cards) == 0 {
+	if len(s.drawn) == 0 {
 		panic(errors.New("invalid pop"))
 	}
-	if s.currentIndex == -1 {
-		panic(errors.New("cannot pop from undrawn stock"))
-	}
-	if n != 0 {
+	if n != 1 {
 		panic(errors.New("can only pop 1 card from stock"))
 	}
 
-	popped := s.cards[s.currentIndex]
-	s.cards = append(s.cards[:s.currentIndex], s.cards[s.currentIndex+1:]...)
-	return s, []Card{popped}, nil
+	popped := s.drawn[:n]
+	s.drawn = s.drawn[n:]
+	return s, popped, nil
 }
 
 func (s Stock) place(cards []Card) (Stock, error) {
@@ -273,7 +304,7 @@ type Game struct {
 type moveType int
 
 const (
-	moveTypeDrawFromStock moveType = 1
+	moveTypeDrawFromStock moveType = iota
 	moveTypeMoveCard
 )
 
@@ -316,9 +347,9 @@ func NewGame(randSrc rand.Source, draws int) Game {
 	deck := make([]Card, 52)
 	for i := 0; i < 4; i++ {
 		for j := 0; j < 13; j++ {
-			deck[(i*4)+j] = Card{
+			deck[(i*13)+j] = Card{
 				Type:    CardType(i + 1),
-				Number:  j,
+				Number:  j + 1,
 				Flipped: false,
 			}
 		}
@@ -333,16 +364,19 @@ func NewGame(randSrc rand.Source, draws int) Game {
 	var d int
 	for i := 0; i < 7; i++ {
 		game.state.Piles[i].flippedCount = 1
-		game.state.Piles[i].cards = deck[d : d+i+1]
+		game.state.Piles[i].cards = make([]Card, i+1)
+		copy(game.state.Piles[i].cards, deck[d:d+i+1])
 		game.state.Piles[i].cards[0].Flipped = true
 		d += i + 1
 	}
 
 	game.state.Stock.passesCount = 0
-	game.state.Stock.currentIndex = -1
-	game.state.Stock.cards = deck[d:]
+	game.state.Stock.drawn = []Card{}
+	game.state.Stock.cards = make([]Card, 24)
+	copy(game.state.Stock.cards, deck[d:])
 
 	for i := 0; i < 4; i++ {
+		game.state.Foundations[i].cardType = CardType(i + 1)
 		game.state.Foundations[i].cards = []Card{}
 	}
 
@@ -367,20 +401,11 @@ func (g Game) move(m move) (Game, error) {
 	case TableauLocationStock:
 		g.state.Stock, cards, err = g.state.Stock.pop(m.CardCount)
 
-	case TableauLocationFoundationClub:
-	case TableauLocationFoundationSpade:
-	case TableauLocationFoundationHeart:
-	case TableauLocationFoundationDiamond:
+	case TableauLocationFoundationClub, TableauLocationFoundationSpade, TableauLocationFoundationHeart, TableauLocationFoundationDiamond:
 		f := g.state.Foundations[m.From-8]
 		g.state.Foundations[m.From-8], cards, err = f.pop(m.CardCount)
 
-	case TableauLocationPile1:
-	case TableauLocationPile2:
-	case TableauLocationPile3:
-	case TableauLocationPile4:
-	case TableauLocationPile5:
-	case TableauLocationPile6:
-	case TableauLocationPile7:
+	case TableauLocationPile1, TableauLocationPile2, TableauLocationPile3, TableauLocationPile4, TableauLocationPile5, TableauLocationPile6, TableauLocationPile7:
 		p := g.state.Piles[m.From-1]
 		g.state.Piles[m.From-1], cards, err = p.pop(m.CardCount)
 	}
@@ -389,26 +414,20 @@ func (g Game) move(m move) (Game, error) {
 		return g, err
 	}
 
+	popped := make([]Card, len(cards))
+	copy(popped, cards)
+
 	switch m.To {
 	case TableauLocationStock:
-		g.state.Stock, err = g.state.Stock.place(cards)
+		g.state.Stock, err = g.state.Stock.place(popped)
 
-	case TableauLocationFoundationClub:
-	case TableauLocationFoundationSpade:
-	case TableauLocationFoundationHeart:
-	case TableauLocationFoundationDiamond:
+	case TableauLocationFoundationClub, TableauLocationFoundationSpade, TableauLocationFoundationHeart, TableauLocationFoundationDiamond:
 		f := g.state.Foundations[m.To-8]
-		g.state.Foundations[m.To-8], err = f.place(cards)
+		g.state.Foundations[m.To-8], err = f.place(popped)
 
-	case TableauLocationPile1:
-	case TableauLocationPile2:
-	case TableauLocationPile3:
-	case TableauLocationPile4:
-	case TableauLocationPile5:
-	case TableauLocationPile6:
-	case TableauLocationPile7:
+	case TableauLocationPile1, TableauLocationPile2, TableauLocationPile3, TableauLocationPile4, TableauLocationPile5, TableauLocationPile6, TableauLocationPile7:
 		p := g.state.Piles[m.To-1]
-		g.state.Piles[m.To-1], err = p.place(cards)
+		g.state.Piles[m.To-1], err = p.place(popped)
 	}
 
 	if err != nil {
