@@ -25,10 +25,16 @@ func main() {
 
 	history := []klondike.Game{game}
 
-	game = mustApplyMove(game.ApplyMove(klondike.DrawFromStock())) // Draw from stock
+ 	// Draw from stock
+	game = mustApplyMove(game.ApplyMove(klondike.DrawFromStock()))
 	history = append(history, game)
 
-	game = mustApplyMove(game.ApplyMove(klondike.MoveCard().FromPile(6).ToPile(0).Count(1))) // Move 1 card from pile 7 to 1
+ 	// Move 1 card from pile 7 to 1
+	game = mustApplyMove(game.ApplyMove(klondike.MoveCard().FromPile(6).ToPile(0).Count(1)))
+	history = append(history, game)
+
+	// Move 1 card from stock to heart foundation
+	game = mustApplyMove(game.ApplyMove(klondike.MoveCard().FromStock().ToFoundation(klondike.CardTypeHeart).Count(1)))
 	history = append(history, game)
 
 	// Alternatively, store the list of moves and apply them
@@ -39,6 +45,7 @@ func main() {
 	moves := []klondike.Move{
 		klondike.DrawFromStock(),
 		klondike.MoveCard().FromPile(6).ToPile(0).Count(1),
+		klondike.MoveCard().FromStock().ToFoundation(klondike.CardTypeHeart).Count(1),
 	}
 
 	for _, m := range moves {
