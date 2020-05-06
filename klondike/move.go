@@ -18,30 +18,28 @@ func Draw() GameMove {
 	return GameMove{t: moveTypeDrawFromStock}
 }
 
-func Move() moveBuilderFrom {
-	return moveBuilderFrom{}
+func Move() MoveBuilder {
+	return MoveBuilder{}
 }
 
-type moveBuilderFrom struct{}
-
-type moveBuilderTo struct {
+type MoveBuilder struct {
 	from  Location
 	count int
 }
 
-func (b moveBuilderFrom) FromPile(i int, n int) moveBuilderTo {
-	return moveBuilderTo{GetPile(i), n}
+func (b MoveBuilder) FromPile(i int, n int) MoveBuilder {
+	return MoveBuilder{GetPile(i), n}
 }
 
-func (b moveBuilderFrom) FromFoundation(cardType CardType) moveBuilderTo {
-	return moveBuilderTo{GetFoundation(cardType), 1}
+func (b MoveBuilder) FromFoundation(cardType CardType) MoveBuilder {
+	return MoveBuilder{GetFoundation(cardType), 1}
 }
 
-func (b moveBuilderFrom) FromStock() moveBuilderTo {
-	return moveBuilderTo{LocationStock, 1}
+func (b MoveBuilder) FromStock() MoveBuilder {
+	return MoveBuilder{LocationStock, 1}
 }
 
-func (b moveBuilderTo) ToPile(i int) GameMove {
+func (b MoveBuilder) ToPile(i int) GameMove {
 	return GameMove{
 		t:     moveTypeMoveCard,
 		from:  b.from,
@@ -50,7 +48,7 @@ func (b moveBuilderTo) ToPile(i int) GameMove {
 	}
 }
 
-func (b moveBuilderTo) ToFoundation(cardType CardType) GameMove {
+func (b MoveBuilder) ToFoundation(cardType CardType) GameMove {
 	return GameMove{
 		t:     moveTypeMoveCard,
 		from:  b.from,
