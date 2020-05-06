@@ -67,10 +67,12 @@ func (p Pile) place(cards []Card) (Pile, error) {
 		panic(errors.New("cards cannot be empty"))
 	}
 
-	bottom := p.cards[0]
-	top := cards[len(cards)-1]
-	if !top.stackablePile(bottom) {
-		return Pile{}, ErrInvalidMove
+	if len(p.cards) > 0 {
+		bottom := p.cards[0]
+		top := cards[len(cards)-1]
+		if !top.stackablePile(bottom) {
+			return Pile{}, ErrInvalidMove
+		}
 	}
 
 	p.cards = append(cards, p.cards...)
