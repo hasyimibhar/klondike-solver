@@ -11,11 +11,11 @@ var (
 )
 
 const (
-	CardTypeUnknown CardType = iota
-	CardTypeHeart
-	CardTypeSpade
-	CardTypeDiamond
-	CardTypeClub
+	Unknown CardType = iota
+	Heart
+	Spade
+	Diamond
+	Club
 )
 
 type Card struct {

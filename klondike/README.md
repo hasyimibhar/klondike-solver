@@ -9,7 +9,7 @@ import (
 	"github.com/hasyimibhar/klondiker-solver/klondike"
 )
 
-func mustApplyMove(g klondike.Game, err error) klondike.Game {
+func must(g klondike.Game, err error) klondike.Game {
 	if err != nil {
 		panic(err)
 	}
@@ -26,15 +26,15 @@ func main() {
 	history := []klondike.Game{game}
 
  	// Draw from stock
-	game = mustApplyMove(game.ApplyMove(klondike.DrawFromStock()))
+	game = must(game.ApplyMove(klondike.Draw()))
 	history = append(history, game)
 
  	// Move 1 card from pile 7 to 1
-	game = mustApplyMove(game.ApplyMove(klondike.MoveCard().FromPile(6).ToPile(0).Count(1)))
+	game = must(game.ApplyMove(klondike.Move().FromPile(6, 1).ToPile(0)))
 	history = append(history, game)
 
 	// Move 1 card from stock to heart foundation
-	game = mustApplyMove(game.ApplyMove(klondike.MoveCard().FromStock().ToFoundation(klondike.CardTypeHeart).Count(1)))
+	game = must(game.ApplyMove(klondike.Move().FromStock().ToFoundation(klondike.Heart)))
 	history = append(history, game)
 
 	// Alternatively, store the list of moves and apply them
@@ -42,14 +42,14 @@ func main() {
 
 	anotherGame := klondike.NewGameWithSeed(42, 1)
 
-	moves := []klondike.Move{
-		klondike.DrawFromStock(),
-		klondike.MoveCard().FromPile(6).ToPile(0).Count(1),
-		klondike.MoveCard().FromStock().ToFoundation(klondike.CardTypeHeart).Count(1),
+	moves := []klondike.GameMove{
+		klondike.Draw(),
+		klondike.Move().FromPile(6, 1).ToPile(0),
+		klondike.Move().FromStock().ToFoundation(klondike.Heart),
 	}
 
 	for _, m := range moves {
-		anotherGame = mustApplyMove(anotherGame.ApplyMove(m))
+		anotherGame = must(anotherGame.ApplyMove(m))
 	}
 }
 ```

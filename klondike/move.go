@@ -7,58 +7,54 @@ const (
 	moveTypeMoveCard
 )
 
-type Move struct {
+type GameMove struct {
 	t     moveType
 	from  Location
 	to    Location
 	count int
 }
 
-func DrawFromStock() Move {
-	return Move{t: moveTypeDrawFromStock}
+func Draw() GameMove {
+	return GameMove{t: moveTypeDrawFromStock}
 }
 
-func MoveCard() moveCardBuilder {
-	return moveCardBuilder{}
+func Move() moveBuilderFrom {
+	return moveBuilderFrom{}
 }
 
-type moveCardBuilder struct {
+type moveBuilderFrom struct{}
+
+type moveBuilderTo struct {
+	from  Location
+	count int
 }
 
-type moveCardBuilderFrom struct {
-	from Location
+func (b moveBuilderFrom) FromPile(i int, n int) moveBuilderTo {
+	return moveBuilderTo{GetPile(i), n}
 }
 
-type moveCardBuilderTo struct {
-	from Location
-	to   Location
+func (b moveBuilderFrom) FromFoundation(cardType CardType) moveBuilderTo {
+	return moveBuilderTo{GetFoundation(cardType), 1}
 }
 
-func (b moveCardBuilder) FromPile(i int) moveCardBuilderFrom {
-	return moveCardBuilderFrom{GetPile(i)}
+func (b moveBuilderFrom) FromStock() moveBuilderTo {
+	return moveBuilderTo{LocationStock, 1}
 }
 
-func (b moveCardBuilder) FromFoundation(cardType CardType) moveCardBuilderFrom {
-	return moveCardBuilderFrom{GetFoundation(cardType)}
-}
-
-func (b moveCardBuilder) FromStock() moveCardBuilderFrom {
-	return moveCardBuilderFrom{LocationStock}
-}
-
-func (b moveCardBuilderFrom) ToPile(i int) moveCardBuilderTo {
-	return moveCardBuilderTo{b.from, GetPile(i)}
-}
-
-func (b moveCardBuilderFrom) ToFoundation(cardType CardType) moveCardBuilderTo {
-	return moveCardBuilderTo{b.from, GetFoundation(cardType)}
-}
-
-func (b moveCardBuilderTo) Count(n int) Move {
-	return Move{
+func (b moveBuilderTo) ToPile(i int) GameMove {
+	return GameMove{
 		t:     moveTypeMoveCard,
 		from:  b.from,
-		to:    b.to,
-		count: n,
+		to:    GetPile(i),
+		count: b.count,
+	}
+}
+
+func (b moveBuilderTo) ToFoundation(cardType CardType) GameMove {
+	return GameMove{
+		t:     moveTypeMoveCard,
+		from:  b.from,
+		to:    GetFoundation(cardType),
+		count: b.count,
 	}
 }

@@ -23,7 +23,7 @@ func (f Foundation) CardType() CardType {
 
 func (f Foundation) Card() Card {
 	if len(f.cards) == 0 {
-		return Card{Type: CardTypeUnknown}
+		return Card{Type: Unknown}
 	}
 
 	return f.cards[0]

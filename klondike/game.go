@@ -109,7 +109,7 @@ func (g Game) State() GameState {
 	return g.state
 }
 
-func (g Game) ApplyMove(m Move) (Game, error) {
+func (g Game) ApplyMove(m GameMove) (Game, error) {
 	var err error
 
 	if m.t == moveTypeDrawFromStock {
