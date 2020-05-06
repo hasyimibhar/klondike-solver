@@ -109,27 +109,27 @@ func (g Game) State() GameState {
 	return g.state
 }
 
-func (g Game) move(m move) (Game, error) {
+func (g Game) ApplyMove(m Move) (Game, error) {
 	var err error
 
-	if m.Type == moveTypeDrawFromStock {
+	if m.t == moveTypeDrawFromStock {
 		g.state.Stock, err = g.state.Stock.draw(g.draws)
 		return g, err
 	}
 
 	var cards []Card
 
-	switch m.From {
+	switch m.from {
 	case LocationStock:
-		g.state.Stock, cards, err = g.state.Stock.pop(m.CardCount)
+		g.state.Stock, cards, err = g.state.Stock.pop(m.count)
 
 	case LocationFoundationClub, LocationFoundationSpade, LocationFoundationHeart, LocationFoundationDiamond:
-		f := g.state.Foundations[m.From-8]
-		g.state.Foundations[m.From-8], cards, err = f.pop(m.CardCount)
+		f := g.state.Foundations[m.from-8]
+		g.state.Foundations[m.from-8], cards, err = f.pop(m.count)
 
 	case LocationPile1, LocationPile2, LocationPile3, LocationPile4, LocationPile5, LocationPile6, LocationPile7:
-		p := g.state.Piles[m.From-1]
-		g.state.Piles[m.From-1], cards, err = p.pop(m.CardCount)
+		p := g.state.Piles[m.from-1]
+		g.state.Piles[m.from-1], cards, err = p.pop(m.count)
 	}
 
 	if err != nil {
@@ -139,17 +139,17 @@ func (g Game) move(m move) (Game, error) {
 	popped := make([]Card, len(cards))
 	copy(popped, cards)
 
-	switch m.To {
+	switch m.to {
 	case LocationStock:
 		g.state.Stock, err = g.state.Stock.place(popped)
 
 	case LocationFoundationClub, LocationFoundationSpade, LocationFoundationHeart, LocationFoundationDiamond:
-		f := g.state.Foundations[m.To-8]
-		g.state.Foundations[m.To-8], err = f.place(popped)
+		f := g.state.Foundations[m.to-8]
+		g.state.Foundations[m.to-8], err = f.place(popped)
 
 	case LocationPile1, LocationPile2, LocationPile3, LocationPile4, LocationPile5, LocationPile6, LocationPile7:
-		p := g.state.Piles[m.To-1]
-		g.state.Piles[m.To-1], err = p.place(popped)
+		p := g.state.Piles[m.to-1]
+		g.state.Piles[m.to-1], err = p.place(popped)
 	}
 
 	if err != nil {
@@ -157,14 +157,6 @@ func (g Game) move(m move) (Game, error) {
 	}
 
 	return g, nil
-}
-
-func (g Game) DrawFromStock() (Game, error) {
-	return g.move(move{Type: moveTypeDrawFromStock})
-}
-
-func (g Game) MoveCard() moveCardBuilder {
-	return moveCardBuilder{game: g}
 }
 
 // Solved returns true if the game is solved.
